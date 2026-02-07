@@ -5,6 +5,13 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 export async function POST() {
   try {
+    if (!GITHUB_TOKEN) {
+      return NextResponse.json(
+        { error: "GITHUB_TOKEN not configured" },
+        { status: 500 }
+      );
+    }
+
     const reposRes = await fetch("https://api.github.com/user/repos?per_page=100", {
       headers: {
         Authorization: `Bearer ${GITHUB_TOKEN}`,
@@ -13,7 +20,12 @@ export async function POST() {
     });
     
     if (!reposRes.ok) {
-      throw new Error(`GitHub API error: ${reposRes.status}`);
+      const errorText = await reposRes.text();
+      console.error("GitHub API error:", errorText);
+      return NextResponse.json(
+        { error: `GitHub API error: ${reposRes.status}` },
+        { status: 500 }
+      );
     }
     
     const repos = await reposRes.json();
@@ -47,7 +59,7 @@ export async function POST() {
   } catch (error: any) {
     console.error("Sync error:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Unknown error" },
       { status: 500 }
     );
   }
