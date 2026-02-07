@@ -4,8 +4,19 @@ import path from "path";
 const dbPath = path.join(process.cwd(), "database", "dashboard.db");
 export const db = new Database(dbPath);
 
-// Initialize tables
+// Initialize tables with proper schema
 db.exec(`
+  CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    status TEXT DEFAULT 'active',
+    github_repo TEXT,
+    metadata TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS agents (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -27,24 +38,26 @@ db.exec(`
     assigned_to TEXT,
     project_id TEXT,
     parent_task_id TEXT,
+    github_issue_number INTEGER,
+    metadata TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     started_at DATETIME,
     completed_at DATETIME,
-    estimated_hours INTEGER,
-    actual_hours INTEGER,
-    metadata TEXT,
-    FOREIGN KEY (assigned_to) REFERENCES agents(id)
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (assigned_to) REFERENCES agents(id) ON DELETE SET NULL
   );
 
-  CREATE TABLE IF NOT EXISTS projects (
+  CREATE TABLE IF NOT EXISTS reports (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    status TEXT DEFAULT 'planning',
-    github_repo TEXT,
+    agent_id TEXT,
+    task_id TEXT,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT,
+    status TEXT DEFAULT 'unread',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    target_completion DATE,
-    metadata TEXT
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS agent_logs (
@@ -54,22 +67,8 @@ db.exec(`
     level TEXT DEFAULT 'info',
     message TEXT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (agent_id) REFERENCES agents(id),
-    FOREIGN KEY (task_id) REFERENCES tasks(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS reports (
-    id TEXT PRIMARY KEY,
-    agent_id TEXT,
-    task_id TEXT,
-    type TEXT NOT NULL,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    status TEXT DEFAULT 'unread',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (agent_id) REFERENCES agents(id),
-    FOREIGN KEY (task_id) REFERENCES tasks(id)
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
   );
 `);
 
-console.log("Database initialized");
+console.log("Database initialized with full schema");
