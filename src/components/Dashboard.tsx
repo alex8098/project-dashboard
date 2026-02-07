@@ -23,6 +23,7 @@ interface Task {
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -32,11 +33,24 @@ export default function Dashboard() {
 
   const fetchProjects = async () => {
     try {
+      setError(null);
       const res = await fetch("/api/projects");
+      
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+      
       const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
       setProjects(data.projects || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch projects:", error);
+      setError(error.message || "Failed to load projects");
     } finally {
       setLoading(false);
     }
@@ -44,10 +58,20 @@ export default function Dashboard() {
 
   const syncGitHub = async () => {
     try {
-      await fetch("/api/sync-github", { method: "POST" });
+      setError(null);
+      const res = await fetch("/api/sync-github", { method: "POST" });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `Sync failed: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      console.log("Synced:", data);
       fetchProjects();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to sync:", error);
+      setError(error.message || "Failed to sync with GitHub");
     }
   };
 
@@ -72,6 +96,19 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700 font-medium">Error: {error}</p>
+          <button 
+            onClick={fetchProjects}
+            className="text-sm text-red-600 hover:underline mt-2"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
