@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Database
+database/*.db
+
+# Next.js
+.next/
+out/
+
+# Environment
+.env.local
+.env
+
+# OS
+.DS_Store
