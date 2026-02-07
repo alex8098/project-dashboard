@@ -23,8 +23,10 @@ interface Task {
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     fetchProjects();
   }, []);
 
@@ -48,6 +50,21 @@ export default function Dashboard() {
       console.error("Failed to sync:", error);
     }
   };
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-gray-100 rounded-lg p-4 h-24 animate-pulse" />
+          ))}
+        </div>
+        <div className="bg-gray-100 rounded-lg shadow h-20 animate-pulse" />
+        <div className="bg-gray-100 rounded-lg shadow h-64 animate-pulse" />
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="text-center py-12">Loading...</div>;
@@ -104,7 +121,7 @@ export default function Dashboard() {
         </div>
         {projects.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-500">
-            No projects yet. Click "Sync with GitHub" to import!
+            No projects yet. Click &quot;Sync with GitHub&quot; to import!
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
