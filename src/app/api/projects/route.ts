@@ -17,8 +17,11 @@ export async function GET() {
     });
     
     return NextResponse.json({ projects: projectsWithTasks });
-  } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json({ projects: [] }, { status: 500 });
+  } catch (error: any) {
+    console.error("API Error:", error);
+    return NextResponse.json({ 
+      projects: [],
+      error: error.message 
+    }, { status: 500 });
   }
 }
