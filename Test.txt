@@ -1,0 +1,71 @@
+def match_excel_columns(
+    input_path: str,
+    output_path: str,
+    col_a: str,
+    col_b: str,
+    sheet_name=0,
+    scorer=fuzz.token_set_ratio,
+    auto_threshold: int = 90,
+    review_threshold: int = 70,
+):
+    """
+    Liest eine Excel-Datei ein, matcht col_a gegen col_b per Fuzzy-Matching
+    und schreibt eine neue Excel-Datei mit Match, Score und Status.
+    Status:
+        "Match"        -> Score >= auto_threshold
+        "Pruefen"      -> review_threshold <= Score < auto_threshold
+        "Kein Match"   -> Score < review_threshold
+    """
+    df = pd.read_excel(input_path, sheet_name=sheet_name)
+    list_a = df[col_a].dropna().astype(str).tolist()
+    list_b = df[col_b].dropna().astype(str).tolist()
+    # Normalisierte Werte vorab berechnen (nur einmal, spart Zeit)
+    norm_b_map = {}
+    for b in list_b:
+        nb = normalize(b)
+        if nb and nb not in norm_b_map:
+            norm_b_map[nb] = b
+    choices = list(norm_b_map.keys())
+    results = []
+    for a in list_a:
+        na = normalize(a)
+        if not na or not choices:
+            results.append((a, None, 0, "Kein Match"))
+            continue
+        best = process.extractOne(na, choices, scorer=scorer)
+        if best is None:
+            results.append((a, None, 0, "Kein Match"))
+            continue
+        match_norm, score, _ = best
+        original_b = norm_b_map[match_norm]
+
+        if score >= auto_threshold:
+            status = "Match"
+        elif score >= review_threshold:
+            status = "Pruefen"
+        else:
+            status = "Kein Match"
+
+        results.append((a, original_b, round(score, 1), status))
+
+    result_df = pd.DataFrame(
+        results, columns=[col_a, f"{col_b}_Match", "Score", "Status"]
+    )
+
+    result_df.to_excel(output_path, index=False)
+    print(f"Fertig. {len(result_df)} Zeilen verarbeitet -> {output_path}")
+    print(result_df["Status"].value_counts())
+
+    return result_df
+
+
+if __name__ == "__main__":
+    match_excel_columns(
+        input_path="input.xlsx",       # <- Pfad zu deiner Excel-Datei anpassen
+        output_path="matched_output.xlsx",
+        col_a="NamedesZahlungsempfaengers1",  # <- Spaltenname A
+        col_b="Geschaeftspartner",             # <- Spaltenname B
+        sheet_name=0,                            # <- ggf. Sheet-Name statt Index
+        auto_threshold=90,
+        review_threshold=70,
+    )
