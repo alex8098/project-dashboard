@@ -1,0 +1,31 @@
+"""Company-name and address normalisation.
+
+Everything in this module is pure Python and importable without Streamlit.
+The two dictionaries it relies on live in editable JSON files under ``data/``:
+
+* ``legal_forms.json``          – legal-form tokens stripped from company names
+* ``address_abbreviations.json`` – abbreviation -> canonical spelling for streets
+
+Pipeline for a fuzzy value (in this order):
+
+1. lowercase
+2. transliteration (ä->ae, ö->oe, ü->ue, ß->ss, then NFKD fold of accents)
+3. punctuation -> space, whitespace collapsed (``rapidfuzz.utils.default_process``)
+4. address abbreviation expansion (street kind only)
+5. legal-form stripping (company kind only)
+6. final whitespace collapse
+
+Structured fields (postcode, house number, country) are normalised to compact
+keys that are compared *exactly* by the matching engine, never fuzzily.
+"""
+from __future__ import annotations
+
+import json
+import re
+import unicodedata
+from dataclasses import dataclass, field, asdict
+from functools import lru_cache
+from pathlib import Path
+from typing import Iterable, Sequence
+
+from rapidfuzz.utils import default_process
